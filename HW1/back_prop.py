@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def sigmod(x):
+def sigmoid(x):
     return 1/(1+np.exp(-x))
 
 def derivative_sigmoid(x):
@@ -60,11 +60,17 @@ class neuron:
     def __init__(self, input_size):
         # self.weight = [np.random.randn() for i in range(input_size)]
         global ct
-        self.weight = [ct+i for i in range(input_size)]
+        self.weight = np.array([ct+i for i in range(input_size)])
         ct = ct + input_size
         self.z = 0
+        self.a = 0
         self.partial_c_partial_z = 0
-    
+
+    def forwarding(self, input_data):
+        print(self.weight)
+        self.z = self.weight.T@input_data
+        self.a = sigmoid(self.z)
+
     def update(self):
         pass
 
@@ -75,23 +81,27 @@ class layer:
 class NN:
     def __init__(self, size = 5, input_size = 2, lr = 1e-3):
         self.lr = lr
+        self.size = [size, size, 1]
         self.layers = [layer(2,size), layer(size, size), layer(size, 1)]
 
-    def forward(self, input):
-        pass        
+    def forward(self, input_data):
+        for layer in range(3):
+            for i in range(self.size[layer]):
+                self.layers[layer].n[i].forwarding(np.array(input_data))
+            input_data = []
+            for i in range(self.size[layer]):
+                input_data.append(self.layers[layer].n[i].z)
+                print("layer: ", layer, "n: ", i)
+                print(self.layers[layer].n[i].z)
+    
 
 
-size = 5
-a = NN(size)
-for layer in range(2):
-    for nn in range(size):
-        print(a.layers[layer].n[nn].weight)
-print(a.layers[2].n[0].weight)
+linear_x, linear_y = np.load('linear_x.npy'), np.load('linear_y.npy')
+xor_x, xor_y = np.load('xor_x.npy'), np.load('xor_y.npy')
 
-# linear_x, linear_y = gen_linear(100)
-# xor_x, xor_y = gen_xor()
 
-# print(linear_x, linear_y)
-# print(xor_x, xor_y)
+a = NN(3)
+a.forward(np.array([0,1]))
+
 # show_result(linear_x, linear_y, linear_y)
 
