@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import math
 def sigmoid(x):
-    return 1/(1+np.exp(-x))
+    return 1/(1+math.exp(-x))
 
 def derivative_sigmoid(x):
     return sigmoid(x)*(1-sigmoid(x))
@@ -35,7 +35,8 @@ def gen_xor():
 
     return np.array(inputs), np.array(labels).reshape(21,1) 
 
-def show_result(x, y, predictions):
+def show_result(x, y, predictions, mode):
+    fig = plt.figure()
     plt.subplot(1,2,1)
     plt.title('Ground truth', fontsize=18)
     for i in range(x.shape[0]):
@@ -47,11 +48,13 @@ def show_result(x, y, predictions):
     plt.subplot(1,2,2)
     plt.title('Predict result', fontsize=18) 
     for i in range(x.shape[0]):
-        if predictions[i] == 0:
+        if predictions[i] < 0.5:
             plt.plot(x[i][0], x[i][1], 'ro')
         else:
             plt.plot(x[i][0], x[i][1], 'bo')
-    plt.show()
+    plt.savefig(mode + "_result")
+    plt.close()
+    # plt.show()
 
 class neuron:
     def __init__(self, input_size):
@@ -68,8 +71,7 @@ class neuron:
 
     def update(self, lr):
         for i in range(len(self.weight)):
-            self.weight[i] += lr * self.input_data[i] * self.partial_c_z
-            # print("weights: ", self.weight[i])
+            self.weight[i] -= lr * self.input_data[i] * self.partial_c_z
 
 class layer:
     def __init__(self, input_size, size):
@@ -88,8 +90,6 @@ class NN:
             input_data = []
             for i in range(self.size[layer]):
                 input_data.append(self.layers[layer].n[i].a)
-                # print("layer: ", layer, "n: ", i)
-                # print(self.layers[layer].n[i].a)
     
     def backward(self, y):
         
@@ -108,29 +108,46 @@ class NN:
                 self.layers[layer].n[0].update(self.lr)
     
     def training(self, x, y, epochs=5000):
+        previous_loss = 10000
         for epoch in range(epochs):
             loss = 0
             for j in range(len(x)):
                 self.forward(x[j])
                 prediction = self.layers[2].n[0].a
-                # print(prediction)
                 loss += ( prediction - y[j] ) ** 2
                 self.backward(y[j])
-            if epoch % 50 == 0:
+            if epoch % 100 == 0:
                 print("Epoch ", epoch , " loss: ", loss)
+            if abs(previous_loss - loss) < 1e-5:
+                break
+            previous_loss = loss
             
-    def testing(self, x, y):
+    def testing(self, x, y, mode):
         predictions = []
+        acc = 0
         for i in range(len(x)):
             self.forward(x[i])
             prediction = self.layers[2].n[0].a
             predictions.append(prediction)
-        show_result(x, y, predictions)
+            if prediction > 0.5 and y[i] == 1 or prediction < 0.5 and y[i] ==0 :
+                acc += 1
+            print(prediction)
+        print("Accuracy: ", acc / len(x))
+        show_result(x, y, predictions,mode )
 
 
 linear_x, linear_y = np.load('linear_x.npy'), np.load('linear_y.npy')
 xor_x, xor_y = np.load('xor_x.npy'), np.load('xor_y.npy')
-a = NN(3)
-a.training(linear_x, linear_y)
-a.testing(linear_x, linear_y)
+
+
+
+linear_NN = NN(3)
+linear_NN.training(linear_x, linear_y, epochs = 8000)
+linear_NN.testing(linear_x, linear_y, "linear")
+
+xor_NN = NN(5, lr = 1e-2)
+xor_NN.training(xor_x, xor_y, epochs = 10000)
+xor_NN.testing(xor_x, xor_y, "XOR")
+
+
 
