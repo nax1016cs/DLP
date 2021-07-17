@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import time
 def sigmoid(x):
     return 1/(1+math.exp(-x))
 
@@ -20,22 +21,23 @@ def gen_linear(n=100):
             labels.append(1)
     return np.array(inputs), np.array(labels).reshape(n,1)
 
-def gen_xor():
+def gen_xor(n=31):
     inputs = []
     labels = []
-    for i in range(11):
-        inputs.append([0.1*i, 0.1*i])
+    ratio = 1 / (n-1)
+    for i in range(n):
+        inputs.append([ratio*i, ratio*i])
         labels.append(0)
 
-        if 0.1*i == 0.5:
+        if ratio*i == 0.5:
             continue
 
-        inputs.append([0.1*i, 1-0.1*i])
+        inputs.append([ratio*i, 1-ratio*i])
         labels.append(1)
 
-    return np.array(inputs), np.array(labels).reshape(21,1) 
+    return np.array(inputs), np.array(labels).reshape(2*n-1,1) 
 
-def show_result(x, y, predictions, mode):
+def show_result(x, y, predictions, name):
     fig = plt.figure()
     plt.subplot(1,2,1)
     plt.title('Ground truth', fontsize=18)
@@ -52,9 +54,22 @@ def show_result(x, y, predictions, mode):
             plt.plot(x[i][0], x[i][1], 'ro')
         else:
             plt.plot(x[i][0], x[i][1], 'bo')
-    plt.savefig(mode + "_result")
+    plt.savefig('result/' + name + "_result" + ".png")
     plt.close()
-    # plt.show()
+
+def plot_training_curve(loss_per_epoch, mode):
+
+    plt.title(mode + ' learning curve', fontsize=18) 
+    epoch, loss = list(map(list,zip(*loss_per_epoch)))[0], list(map(list,zip(*loss_per_epoch)))[1]
+    fig = plt.figure()
+    fig, ax1 = plt.subplots()
+    ax1.set_ylim([0,7])
+    ax1.set_title('Learning curve')
+    ax1.set_xlabel('Epochs')
+    ax1.set_ylabel('Loss')
+    ax1.plot(epoch, loss, color='tab:red', label='Loss')
+    plt.savefig('result/' + mode + "_loss" + ".png")
+    plt.close()
 
 class neuron:
     def __init__(self, input_size):
@@ -78,7 +93,8 @@ class layer:
         self.n = [neuron(input_size) for i in range(size)]
 
 class NN:
-    def __init__(self, size = 5, input_size = 2, lr = 1e-3):
+    def __init__(self, name, size = 5, input_size = 2, lr = 1e-2):
+        self.name = name
         self.lr = lr
         self.size = [size, size, 1]
         self.layers = [layer(2,size), layer(size, size), layer(size, 1)]
@@ -97,20 +113,20 @@ class NN:
             for i in range(self.size[layer]):
                 if layer == 2:
                     self.layers[layer].n[0].partial_c_z = 2 * (self.layers[layer].n[0].a - y)
-
                 else: 
                     for j in range(self.size[layer+1]):
                         self.layers[layer].n[i].partial_c_z += \
                             self.layers[layer+1].n[j].partial_c_z * self.layers[layer+1].n[j].weight[i]
-                    self.layers[layer].n[i].partial_c_z *= derivative_sigmoid(self.layers[layer].n[i].z)
+                self.layers[layer].n[i].partial_c_z *= derivative_sigmoid(self.layers[layer].n[i].z)
         for layer in reversed(range(3)):
             for i in range(self.size[layer]):
                 self.layers[layer].n[0].update(self.lr)
     
     def training(self, x, y, epochs=5000):
-        previous_loss = 10000
+        loss_per_epoch = []
         for epoch in range(epochs):
             loss = 0
+
             for j in range(len(x)):
                 self.forward(x[j])
                 prediction = self.layers[2].n[0].a
@@ -118,11 +134,21 @@ class NN:
                 self.backward(y[j])
             if epoch % 100 == 0:
                 print("Epoch ", epoch , " loss: ", loss)
-            if abs(previous_loss - loss) < 1e-5:
-                break
-            previous_loss = loss
+                loss_per_epoch.append([epoch,loss])
+            # if loss < 0.1:
+            #     break
+            # acc = 0
+            # for i in range(len(x)):
+            #     self.forward(x[i])
+            #     prediction = self.layers[2].n[0].a
+            #     if prediction > 0.5 and y[i] == 1 or prediction < 0.5 and y[i] ==0 :
+            #         acc += 1
+            # if acc == len(x):
+            #     break
+
+        plot_training_curve(loss_per_epoch, self.name)
             
-    def testing(self, x, y, mode):
+    def testing(self, x, y):
         predictions = []
         acc = 0
         for i in range(len(x)):
@@ -132,22 +158,45 @@ class NN:
             if prediction > 0.5 and y[i] == 1 or prediction < 0.5 and y[i] ==0 :
                 acc += 1
             print(prediction)
-        print("Accuracy: ", acc / len(x))
-        show_result(x, y, predictions,mode )
+        print("Accuracy: ", (acc / len(x))*100, "%")
+        show_result(x, y, predictions, self.name )
+
+    def save_weight(self, name):
+        weights = []
+        for layer in self.layers:
+            for neuron in layer.n:
+                weights.append(neuron.weight)
+        np.save(name, np.array(weights))
+
+    def load_weight(self, name):
+        weight = np.load(name, allow_pickle=True)
+        i = 0
+        for layer in self.layers:
+            for neuron in layer.n:
+                neuron.weight = weight[i]
+                i += 1
+
+linear_x, linear_y = np.load('data/linear_x.npy'), np.load('data/linear_y.npy')
+xor_x, xor_y = np.load('data/xor_x.npy'), np.load('data/xor_y.npy')
 
 
-linear_x, linear_y = np.load('linear_x.npy'), np.load('linear_y.npy')
-xor_x, xor_y = np.load('xor_x.npy'), np.load('xor_y.npy')
 
 
+size = 8
 
-linear_NN = NN(3)
-linear_NN.training(linear_x, linear_y, epochs = 8000)
-linear_NN.testing(linear_x, linear_y, "linear")
+linear_NN = NN("linear_" + str(size) + "_" + str(0.01), size,)
+# linear_NN.training(linear_x, linear_y,  epochs = 1000)
+# linear_NN.save_weight("result/linear_8_final_weight")
+linear_NN.load_weight("result/linear_8_final_weight.npy")
+linear_NN.testing(linear_x, linear_y)
 
-xor_NN = NN(5, lr = 1e-2)
-xor_NN.training(xor_x, xor_y, epochs = 10000)
-xor_NN.testing(xor_x, xor_y, "XOR")
+
+xor_NN = NN("xor_" + str(size) + "_" + str(0.05), size, lr = 0.05)
+# xor_NN.training(xor_x, xor_y,  epochs = 3000)
+
+# xor_NN.save_weight("result/xor_8_final_weight")
+xor_NN.load_weight("result/xor_8_final_weight.npy")
+xor_NN.testing(xor_x, xor_y)
 
 
 
