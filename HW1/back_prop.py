@@ -122,11 +122,10 @@ class NN:
             for i in range(self.size[layer]):
                 self.layers[layer].n[0].update(self.lr)
     
-    def training(self, x, y, epochs=5000):
+    def training(self, x, y, epochs=50000):
         loss_per_epoch = []
         for epoch in range(epochs):
             loss = 0
-
             for j in range(len(x)):
                 self.forward(x[j])
                 prediction = self.layers[2].n[0].a
@@ -135,16 +134,9 @@ class NN:
             if epoch % 100 == 0:
                 print("Epoch ", epoch , " loss: ", loss)
                 loss_per_epoch.append([epoch,loss])
-            # if loss < 0.1:
-            #     break
-            # acc = 0
-            # for i in range(len(x)):
-            #     self.forward(x[i])
-            #     prediction = self.layers[2].n[0].a
-            #     if prediction > 0.5 and y[i] == 1 or prediction < 0.5 and y[i] ==0 :
-            #         acc += 1
-            # if acc == len(x):
-            #     break
+            if loss < 0.1:
+                break
+
 
         plot_training_curve(loss_per_epoch, self.name)
             
@@ -158,7 +150,7 @@ class NN:
             if prediction > 0.5 and y[i] == 1 or prediction < 0.5 and y[i] ==0 :
                 acc += 1
             print(prediction)
-        print("Accuracy: ", (acc / len(x))*100, "%")
+        print(self.name + " accuracy: ", (acc / len(x))*100, "%\n\n")
         show_result(x, y, predictions, self.name )
 
     def save_weight(self, name):
@@ -175,28 +167,24 @@ class NN:
             for neuron in layer.n:
                 neuron.weight = weight[i]
                 i += 1
+def main():
+    linear_x, linear_y = np.load('data/linear_x.npy'), np.load('data/linear_y.npy')
+    xor_x, xor_y = np.load('data/xor_x.npy'), np.load('data/xor_y.npy')
 
-linear_x, linear_y = np.load('data/linear_x.npy'), np.load('data/linear_y.npy')
-xor_x, xor_y = np.load('data/xor_x.npy'), np.load('data/xor_y.npy')
+    size = 8
+    linear_NN = NN("linear_" + str(size) + "_" + str(0.01), size,)
+    # linear_NN.training(linear_x, linear_y)
+    # linear_NN.save_weight("result/linear_8_final_weight")
+    linear_NN.load_weight("result/linear_8_final_weight.npy")
+    linear_NN.testing(linear_x, linear_y)
 
+    xor_NN = NN("xor_" + str(size) + "_" + str(0.05), size, lr = 0.05)
+    # xor_NN.training(xor_x, xor_y)
+    # xor_NN.save_weight("result/xor_8_final_weight")
+    xor_NN.load_weight("result/xor_8_final_weight.npy")
+    xor_NN.testing(xor_x, xor_y)
 
-
-
-size = 8
-
-linear_NN = NN("linear_" + str(size) + "_" + str(0.01), size,)
-# linear_NN.training(linear_x, linear_y,  epochs = 1000)
-# linear_NN.save_weight("result/linear_8_final_weight")
-linear_NN.load_weight("result/linear_8_final_weight.npy")
-linear_NN.testing(linear_x, linear_y)
-
-
-xor_NN = NN("xor_" + str(size) + "_" + str(0.05), size, lr = 0.05)
-# xor_NN.training(xor_x, xor_y,  epochs = 3000)
-
-# xor_NN.save_weight("result/xor_8_final_weight")
-xor_NN.load_weight("result/xor_8_final_weight.npy")
-xor_NN.testing(xor_x, xor_y)
-
+if __name__ == '__main__':
+    main()
 
 
