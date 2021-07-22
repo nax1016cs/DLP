@@ -3,17 +3,14 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader,TensorDataset
-import time
 import matplotlib.pyplot as plt
-
+import time
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-
-
 class EEGNET(nn.Module):
-    def __init__(self, activation, dropout=0.5):
+    def __init__(self, activation, dropout=0.25):
         super(EEGNET, self).__init__()
-        self.name = "EEGNET_" + activation
+        self.name = "EEGNET_" + activation + "_" + str(dropout)
         if activation == "elu":
             self.activation = nn.ELU()
         elif activation == "leaky_relu":
@@ -42,9 +39,6 @@ class EEGNET(nn.Module):
         self.classify = nn.Sequential(
             nn.Linear(736, 2, bias=True)
         )
-# 0.1 0.1 0.8527
-# 0.1 0.05 0.856
-# 0.1 0.0005 0.857
 
     def forward(self, x):
         out = self.firstconv(x)
@@ -58,7 +52,7 @@ class DeepConvNet(nn.Module):
     def __init__(self, activation, dropout=0.5):
         super(DeepConvNet, self).__init__()
         self.dropout = dropout
-        self.name = "DeepConvNet_" + activation
+        self.name = "DeepConvNet_" + activation + "_" + str(dropout)
         if activation == "elu":
             self.activation = nn.ELU()
         elif activation == "leaky_relu":
@@ -114,12 +108,12 @@ def save_checkpoint(path, model):
 def load_checkpoint(path, model, device):  
     
     state_dict = torch.load(path, map_location=device)
-    model.load_state_dict(state_dict["model_state_dict"])
+    model.load_state_dict(state_dict["model_state_dict"] , strict=True)
 
     return model
 
 def plot_accuracy(acc, name):
-    epoch = np.array([i for i in range(500)])
+    epoch = np.array([i for i in range(300)])
     plt.title('Accuracy', fontsize=18) 
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy(%)")
@@ -127,10 +121,12 @@ def plot_accuracy(acc, name):
     plt.legend(loc='lower right')
     plt.ylim([50, 105])
 
+
+
 def training(model, train_loader, test_loader):
     print(device)
     lr = 1e-3
-    epochs = 500
+    epochs = 300
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.012)
     best_test_acc = 0.0
@@ -138,7 +134,7 @@ def training(model, train_loader, test_loader):
     test_acc_record = []
 
     model.to(device=device)
-    # model.train()
+    model.train()
     for epoch in range(epochs): 
         epoch_start_time = time.time()
         train_acc, train_loss = 0.0, 0.0
@@ -158,8 +154,8 @@ def training(model, train_loader, test_loader):
             
             train_acc_record.append(training_accuracy)
 
-        testing_accuracy, testing_loss = evaluating(model, test_loader, criterion)
-        test_acc_record.append(testing_accuracy)
+            testing_accuracy, testing_loss = evaluating(model, test_loader, criterion)
+            test_acc_record.append(testing_accuracy)
 
 
         if (epoch+1)%5 == 0 or epoch == 0:
@@ -171,7 +167,6 @@ def training(model, train_loader, test_loader):
             save_checkpoint('check_point/{}_best_model.pt'.format(model.name), model)
     print("Best test accuracy of {}" .format(model.name) , best_test_acc)
     return np.array(train_acc_record), np.array(test_acc_record)
-
 
 def evaluating(model, test_loader, criterion):
     test_acc, test_loss = 0.0, 0.0
@@ -188,42 +183,34 @@ def evaluating(model, test_loader, criterion):
             testing_loss = test_loss / len(test_loader.dataset)
     return testing_accuracy, testing_loss
 
-def main():
-    train_loader, test_loader = dataloader()
-    activation_func = ["elu", "leaky_relu", "relu"]
-    droupt_rate = 0.15
+droupt_rate = [0.15]
+train_loader, test_loader = dataloader()
+# activation_func = ["elu", "leaky_relu", "relu"]
+activation_func = ["relu"]
+for dropout in droupt_rate:
     for func in activation_func:
-        eegnet = EEGNET(func, dropout=droupt_rate)
-        train_acc_record, test_acc_record= training(eegnet, train_loader, test_loader)
-        plot_accuracy(train_acc_record, "EEG_train_"+ str(droupt_rate) + "_" + func)
-        np.save("Accuracy/" + "EEG_train_"+ str(droupt_rate) + "_" + func, train_acc_record)
-        plot_accuracy(test_acc_record, "EEG_test_"+ str(droupt_rate) + "_" + func)
-        np.save("Accuracy/" + "EEG_test_" + str(droupt_rate) + "_"+ func, test_acc_record)
-    plt.savefig("fig/" + "EEG" + ".png")
-    plt.close()
+        eegnet = EEGNET(func, dropout=dropout)
+        train_acc_record, test_acc_record = training(eegnet, train_loader, test_loader)
+        np.save("Accuracy/" + "EEG_train_"+ str(dropout) + "_" + func, train_acc_record)
+        plot_accuracy(train_acc_record, "EEG_train_"+ str(dropout) + "_" + func)
+        np.save("Accuracy/" + "EEG_test_" + str(dropout) + "_"+ func, test_acc_record)
+        plot_accuracy(test_acc_record, "EEG_test_"+ str(dropout) + "_" + func)
+plt.savefig("fig/" + "EEG" + ".png")
+plt.close()
 
-
-    droupt_rate = 0.25
-    for func in activation_func:
-        deepconvnet = DeepConvNet(func, dropout=droupt_rate)
-        train_acc_record, test_acc_record= training(deepconvnet, train_loader, test_loader)
-        plot_accuracy(train_acc_record, "DEEP_train_"+ str(droupt_rate) + "_" + func)
-        np.save("Accuracy/" + "DEEP_train_"+ str(droupt_rate) + "_" + func, train_acc_record)
-        plot_accuracy(test_acc_record, "DEEP_test_"+ str(droupt_rate) + "_" + func)
-        np.save("Accuracy/" + "DEEP_test_" + str(droupt_rate) + "_"+ func, test_acc_record)
-    plt.savefig("fig/" + "DEEP" + ".png")
-    plt.close()
-
-def eval_best_model():
-    train_loader, test_loader = dataloader()
-    model = EEGNET("leaky_relu", dropout=0.15)
-    model = load_checkpoint("check_point/EEGNET_relu_best_model.pt", model, device)
-    model = model.to(device)
-    criterion = nn.CrossEntropyLoss()
-    testing_accuracy, _ = evaluating(model, test_loader, criterion)
-    print("EEGNET_leaky_relu_best_model: ", testing_accuracy)
-    
-
-if __name__ == '__main__':
-    # main()
-    eval_best_model()
+# for dropout in droupt_rate:
+#     for func in activation_func:
+#         deepconvnet = DeepConvNet(func, dropout=dropout)
+#         train_acc_record, test_acc_record = training(deepconvnet, train_loader, test_loader)
+#         np.save("Accuracy/" + "DEEP_train_" + str(dropout) + "_"+ func, train_acc_record)
+#         plot_accuracy(train_acc_record, "DEEP_train_"+ str(dropout) + "_" + func)
+#         np.save("Accuracy/" + "DEEP_test_"  + str(dropout) + "_"+  func, test_acc_record)
+#         plot_accuracy(test_acc_record, "DEEP_test_"+ str(dropout) + "_" + func)
+# plt.savefig("fig/" + "DEEP" + ".png")
+# plt.close()
+# train_acc_record = np.load("Accuracy/" + "DEEP_train_" + str(0.5) + "_relu.npy")
+# test_acc_record = np.load("Accuracy/" + "DEEP_train_" + str(0.5) + "_elu.npy")
+# print(test_acc_record.shape)
+# print(train_acc_record.shape)
+# plot_accuracy(train_acc_record, "DEEP_train_" + str(0.5) + "_relu")
+# plot_accuracy(test_acc_record, "DEEP_train_" + str(0.5) + "_elu")
