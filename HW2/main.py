@@ -8,8 +8,6 @@ import matplotlib.pyplot as plt
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-
-
 class EEGNET(nn.Module):
     def __init__(self, activation, dropout=0.5):
         super(EEGNET, self).__init__()
@@ -42,9 +40,7 @@ class EEGNET(nn.Module):
         self.classify = nn.Sequential(
             nn.Linear(736, 2, bias=True)
         )
-# 0.1 0.1 0.8527
-# 0.1 0.05 0.856
-# 0.1 0.0005 0.857
+
 
     def forward(self, x):
         out = self.firstconv(x)
@@ -101,7 +97,7 @@ def dataloader():
     train_data, train_label, test_data, test_label = read_bci_data()
     training_set = TensorDataset(torch.from_numpy(train_data),torch.from_numpy(train_label))
     testing_set = TensorDataset(torch.from_numpy(test_data),torch.from_numpy(test_label))
-    train_loader = DataLoader(training_set, batch_size=1080, shuffle=True)
+    train_loader = DataLoader(training_set,batch_size=1080, shuffle=True)
     test_loader = DataLoader(testing_set, batch_size=1080, shuffle=False)
     return train_loader, test_loader
 
@@ -138,8 +134,8 @@ def training(model, train_loader, test_loader):
     test_acc_record = []
 
     model.to(device=device)
-    # model.train()
     for epoch in range(epochs): 
+        model.train()
         epoch_start_time = time.time()
         train_acc, train_loss = 0.0, 0.0
         for training_data in train_loader:
@@ -221,7 +217,7 @@ def eval_best_model():
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
     testing_accuracy, _ = evaluating(model, test_loader, criterion)
-    print("EEGNET_leaky_relu_best_model: ", testing_accuracy)
+    print("EEGNET_relu_best_model: ", testing_accuracy)
     
 
 if __name__ == '__main__':
