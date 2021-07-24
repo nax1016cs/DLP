@@ -212,12 +212,20 @@ def main():
 
 def eval_best_model():
     train_loader, test_loader = dataloader()
-    model = EEGNET("leaky_relu", dropout=0.15)
-    model = load_checkpoint("check_point/EEGNET_relu_best_model.pt", model, device)
-    model = model.to(device)
-    criterion = nn.CrossEntropyLoss()
-    testing_accuracy, _ = evaluating(model, test_loader, criterion)
-    print("EEGNET_relu_best_model: ", testing_accuracy)
+    activation_func = ["elu", "leaky_relu", "relu"]
+    for func in activation_func:
+        model = EEGNET(func)
+        model = load_checkpoint("check_point/EEGNET_" + func + "_best_model.pt", model, device)
+        model = model.to(device)
+        criterion = nn.CrossEntropyLoss()
+        testing_accuracy, _ = evaluating(model, test_loader, criterion)
+        print("EEGNET_" + func + "_best_model: ", testing_accuracy)
+        model = DeepConvNet(func)
+        model = load_checkpoint("check_point/DeepConvNet_" + func + "_best_model.pt", model, device)
+        model = model.to(device)
+        criterion = nn.CrossEntropyLoss()
+        testing_accuracy, _ = evaluating(model, test_loader, criterion)
+        print("DeepConvNet_" + func + "_best_model: ", testing_accuracy)
     
 
 if __name__ == '__main__':
