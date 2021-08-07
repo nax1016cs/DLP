@@ -16,7 +16,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 from os import system
 from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
-
+from dataloader import * 
 
 
 
@@ -45,6 +45,7 @@ You should check them before starting your lab.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SOS_token = 0
 EOS_token = 1
+MAX_LENGTH = 100
 #----------Hyper Parameters----------#
 hidden_size = 256
 #The number of vocabulary
@@ -87,7 +88,7 @@ the order should be : simple present, third person, present progressive, past
 def Gaussian_score(words):
     words_list = []
     score = 0
-    yourpath = ''#should be your directory of train.txt
+    yourpath = 'data/train.txt'#should be your directory of train.txt
     with open(yourpath,'r') as fp:
         for line in fp:
             word = line.split(' ')
@@ -106,12 +107,12 @@ class EncoderRNN(nn.Module):
         self.hidden_size = hidden_size
 
         self.embedding = nn.Embedding(input_size, hidden_size)
-        self.gru = nn.GRU(hidden_size, hidden_size)
+        self.lstm = nn.LSTM(hidden_size, hidden_size)
 
     def forward(self, input, hidden):
         embedded = self.embedding(input).view(1, 1, -1)
         output = embedded
-        output, hidden = self.gru(output, hidden)
+        output, hidden = self.lstm(output, hidden)
         return output, hidden
 
     def initHidden(self):
@@ -122,16 +123,14 @@ class DecoderRNN(nn.Module):
     def __init__(self, hidden_size, output_size):
         super(DecoderRNN, self).__init__()
         self.hidden_size = hidden_size
-
         self.embedding = nn.Embedding(output_size, hidden_size)
-        self.gru = nn.GRU(hidden_size, hidden_size)
+        self.lstm = nn.LSTM(hidden_size, hidden_size)
         self.out = nn.Linear(hidden_size, output_size)
-        self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(self, input, hidden):
         output = self.embedding(input).view(1, 1, -1)
         output = F.relu(output)
-        output, hidden = self.gru(output, hidden)
+        output, hidden = self.lstm(output, hidden)
         output = self.out(output[0])
         return output, hidden
 
