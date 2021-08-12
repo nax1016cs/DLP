@@ -192,4 +192,3 @@ class CVAE(nn.Module):
                 word.append(output[:-3])
         return word
     
-

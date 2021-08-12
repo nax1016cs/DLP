@@ -45,9 +45,9 @@ def training(model, train_dataset, test_dataset, epochs=100):
 def evaluate(model, train_dataset, test_dataset):
     torch.random.manual_seed(243)
     bleu_acc = model.Test(test_dataset)
-    print(bleu_acc)
+    print("BLEU4 score: ", bleu_acc)
     gaussian_acc = gaussian_scoring(model, train_dataset)
-    print(gaussian_acc)
+    print("Gaussian score: ", gaussian_acc)
 
 def gaussian_scoring(model, train_dataset):
     train_words = []
