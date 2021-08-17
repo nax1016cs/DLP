@@ -4,17 +4,26 @@ import torch.nn as nn
 import numpy as np
 import copy
 import json
-
 from torchvision.utils import save_image
 from evaluator import EvaluationModel
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+def save_checkpoint(path, model):
+    state_dict = {"model_state_dict": model.state_dict(),}
+    torch.save(state_dict, path)
 
-def Condition():
+def load_checkpoint(path, model, device):  
+    state_dict = torch.load(path, map_location=device)
+    model.load_state_dict(state_dict["model_state_dict"])
+    return model
+
+
+def Condition(filename):
     with open(os.path.join('dataset', 'objects.json'), 'r') as file:
         classes = json.load(file)
 
-    with open(os.path.join('dataset','test.json')) as file:
+    with open(os.path.join('dataset', filename)) as file:
         test_conditions_list = json.load(file)
 
     labels = torch.zeros(len(test_conditions_list),len(classes))
@@ -24,19 +33,19 @@ def Condition():
 
     return labels
 
-def sample(batch_size, z_dim):
-    return torch.randn(batch_size,z_dim)
+def sample(batch_size, latent_size):
+    return torch.randn(batch_size, latent_size)
 
-def train(dataloader, generator, discriminator, z_dim, epochs, lr):
+def train(dataloader, generator, discriminator, latent_size, epochs, lr):
 
     optimizerG = torch.optim.Adam(generator.parameters(), lr, betas = (0.5,0.99))
     optimizerD = torch.optim.Adam(discriminator.parameters(), lr, betas = (0.5,0.99))
     criterion = nn.BCELoss()
     evaluation_model = EvaluationModel()
-    test_conditions = Condition().to(device)
-    fz = sample(len(test_conditions), z_dim).to(device)
+    test_conditions = Condition("test.json").to(device)
+    fz = sample(len(test_conditions), latent_size).to(device)
 
-    best_score = 0.5
+    best_testing_acc = 0.0
 
     for epoch in range(epochs):
         Total_gen_loss = 0
@@ -46,53 +55,47 @@ def train(dataloader, generator, discriminator, z_dim, epochs, lr):
             discriminator.train()
             images = images.to(device)
             conditions = conditions.to(device)
-            batch_size=len(images)
-
+            batch_size = len(images)
             real = torch.ones(batch_size).to(device)
             fake = torch.zeros(batch_size).to(device)
-            """
-            train discriminator
-            """
+            # train discriminator
+
+            # feed real images
             optimizerD.zero_grad()
-            # for real images
             prediction = discriminator(images, conditions)
             loss_real = criterion(prediction, real)
-            # for fake images
-            z = sample(batch_size, z_dim).to(device)
+
+            # feed fake images
+            z = sample(batch_size, latent_size).to(device)
             gen_imgs = generator(z, conditions)
             prediction = discriminator(gen_imgs.detach(), conditions)
             loss_fake = criterion(prediction, fake)
-            # bp
             dis_loss = loss_real + loss_fake
             dis_loss.backward()
             optimizerD.step()
 
-            """
-            train generator
-            """
+            # train generator
             for _ in range(4):
                 optimizerG.zero_grad()
-                z = sample(batch_size, z_dim).to(device)
+                z = sample(batch_size, latent_size).to(device)
                 gen_imgs = generator(z, conditions)
                 prediction = discriminator(gen_imgs,conditions)
                 gen_loss = criterion(prediction,real)
                 gen_loss.backward()
                 optimizerG.step()
-
-            print(f'epoch [{epoch}] Image: {i}/{len(dataloader)}  Gen_loss: {gen_loss.item():.3f}  Dis_loss: {dis_loss.item():.3f}')
+           
             Total_gen_loss += gen_loss.item()
             Total_dis_loss += dis_loss.item()
 
-        # evaluate
         generator.eval()
         discriminator.eval()
         with torch.no_grad():
             gen_imgs = generator(fz, test_conditions)
-        score = evaluation_model.eval(gen_imgs, test_conditions)
-        if score > best_score:
-            best_score = score
-            best_model = copy.deepcopy(generator.state_dict())
-            torch.save(best_model,os.path.join('check_point',f'epoch{epoch}_score{score:.2f}.pt'))
-        print(f'Total_gen_loss: {Total_gen_loss}  Total_dis_loss: {Total_dis_loss} Testing score: {score:.2f}')
-        print('='*80)
+        testing_acc = evaluation_model.eval(gen_imgs, test_conditions)
+        if testing_acc > best_testing_acc:
+            best_testing_acc = testing_acc
+            save_checkpoint("check_point/" + str(testing_acc) + ".pt", generator )
+        print('epoch[\033[35m{:>4d}\033[00m/{:>4d}]  \033[32m Generator loss:\033[00m {:.6f} \033[34m Generator loss:\033[00m {:.6f} | \033[33mTest Acc:\033[00m {:.6f}'.format(
+            epoch+1, epochs,  Total_gen_loss/len(dataloader), Total_dis_loss/len(dataloader), testing_acc))
         save_image(gen_imgs, os.path.join('results', f'epoch{epoch}.png'), nrow = 8, normalize = True)
+
