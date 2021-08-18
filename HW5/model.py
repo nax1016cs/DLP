@@ -72,4 +72,3 @@ class Generator(nn.Module):
         out = torch.cat((z,c),dim = 1)
         out = self.main(out)
         return out
-

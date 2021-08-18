@@ -71,4 +71,3 @@ def train(dataloader, generator, discriminator, latent_size, epochs, lr):
         print('epoch[\033[35m{:>4d}\033[00m/{:>4d}]  \033[32m Generator loss:\033[00m {:.6f} \033[34m Discriminator loss:\033[00m {:.6f} | \033[33mTest Acc:\033[00m {:.6f}'.format(
             epoch+1, epochs,  Total_gen_loss/len(dataloader), Total_dis_loss/len(dataloader), testing_acc))
         save_image(gen_imgs, os.path.join('results', f'epoch{epoch}.png'), nrow = 8, normalize = True)
-
