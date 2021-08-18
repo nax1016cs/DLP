@@ -19,18 +19,18 @@ class Discriminator(nn.Module):
             nn.LeakyReLU()
         )
         self.main = nn.Sequential(
-            nn.Conv2d(nc, ndf, 4, 2, 1),
+            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace = True),
-            nn.Conv2d(ndf, ndf * 2, 4, 2, 1),
+            nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf * 2),
             nn.LeakyReLU(0.2, inplace = True),
-            nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1),
+            nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf * 4),
             nn.LeakyReLU(0.2, inplace = True),
-            nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1),
+            nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf * 8),
             nn.LeakyReLU(0.2, inplace = True),
-            nn.Conv2d(ndf * 8, 1, 4, 1, 0),
+            nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
             nn.Sigmoid()
         )
 
@@ -46,29 +46,29 @@ class Generator(nn.Module):
         super(Generator,self).__init__()
         self.latent_size = latent_size
         self.condition_size = condition_size
-        self.conditionExpand = nn.Sequential(
+        self.condition = nn.Sequential(
             nn.Linear(24, condition_size),
             nn.ReLU()
         )
         self.main = nn.Sequential(
-            nn.ConvTranspose2d( latent_size + condition_size, ngf * 8, 4, 1, 0),
+            nn.ConvTranspose2d( latent_size + condition_size, ngf * 8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(ngf * 8),
             nn.ReLU(True),
-            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1),
+            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf * 4),
             nn.ReLU(True),
-            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1),
+            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf * 2),
             nn.ReLU(True),
-            nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1),
+            nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.ReLU(True),
-            nn.ConvTranspose2d( ngf, nc, 4, 2, 1),
+            nn.ConvTranspose2d( ngf, nc, 4, 2, 1, bias=False),
             nn.Tanh()
         )
     def forward(self,z,c):
         z = z.view(-1, self.latent_size, 1, 1)
-        c = self.conditionExpand(c).view(-1, self.condition_size, 1 , 1)
+        c = self.condition(c).view(-1, self.condition_size, 1 , 1)
         out = torch.cat((z,c),dim = 1)
         out = self.main(out)
         return out

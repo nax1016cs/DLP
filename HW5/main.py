@@ -6,6 +6,7 @@ from dataloader import CLEVRDataset
 from model import Generator, Discriminator, init_weight
 from train import train
 from evaluate import evaluate
+from utils import load_checkpoint
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 latent_size = 100
@@ -26,12 +27,13 @@ def main(method):
 
     elif method == "testing":
         generator = Generator(latent_size,condition_size).to(device)
-        generator.load_state_dict(torch.load('check_point/0.7083333333333334.pt'))
-        torch.random.manual_seed(823)
-        score = evaluate(generator, "test.json", latent_size,"result1.png" )
-        print("Score: ", score)
-        torch.random.manual_seed(547)
-        score = evaluate(generator, "new_test.json", latent_size, "result2.png")
-        print("Score: ", score)
+        load_checkpoint('check_point/0.7083333333333334.pt', generator, device)
+        torch.random.manual_seed(253)
+        score1 = evaluate(generator, "test.json", latent_size,"result1.png" )
+        print("Score1: ", score1)
+        torch.random.manual_seed(253)
+        score2 = evaluate(generator, "new_test.json", latent_size, "result2.png")
+        print("Score2: ", score2)
+
 
 main("testing")
