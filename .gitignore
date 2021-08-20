@@ -1,1 +1,14 @@
 HW1/data
+HW1/result
+__pycache__/
+HW2/Accuracy
+HW3/datas/data
+HW3/datas/data.zip
+HW3/check_point
+HW4/check_point
+HW5/images/
+HW5/classifier_weight.pth
+HW5/images.pth
+HW5/labels.pth
+HW5/*bad.py
+HW6/log
